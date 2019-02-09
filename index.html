@@ -71,15 +71,44 @@
   <textarea rows="2"></textarea>
 </div>
 
+<div>
+	<input id="uploader" type="file" />
+</div>
 <pre id="output"></pre>
 <button id="encrypt">Encrypt</button>
 <button id="add-public-key">Add Public Key</button>
 <button id="add-private-key">Add Private Key</button>
-
 <script>
 const query = query => document.querySelector(query);
 const queryAll = query => Array.prototype.slice.apply(document.querySelectorAll(query));
 const publicKeyTemplate = query('#public-keys').innerHTML;
+
+
+query("#uploader").addEventListener('change', function() {
+
+  var reader = new FileReader();
+  reader.onload = function() {
+
+    var arrayBuffer = this.result;
+    var fileData = new Uint8Array(arrayBuffer);
+
+		const options = {
+      data: query('.message textarea').value,
+      publicKeys: queryAll('.public-key textarea').map(el => getKey(el, 'public')),
+      privateKey: "",
+      armor: true,
+    };
+
+    return openpgp.encrypt(options).then(results => {
+      query('#output').innerHTML = results.data;
+    });
+
+
+  }
+  reader.readAsArrayBuffer(this.files[0]);
+
+}, false);
+
 
 query('#add-public-key').addEventListener('click', () => {
   const element = document.createElement('div');
@@ -114,6 +143,7 @@ function getPrivateKey() {
 }
 
 query('#encrypt').addEventListener('click', () => {
+
   getPrivateKey().then(privateKey => {
     const options = {
       data: query('.message textarea').value,
