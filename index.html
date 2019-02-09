@@ -83,7 +83,6 @@ const query = query => document.querySelector(query);
 const queryAll = query => Array.prototype.slice.apply(document.querySelectorAll(query));
 const publicKeyTemplate = query('#public-keys').innerHTML;
 
-
 query("#uploader").addEventListener('change', function() {
 
 	var reader = new FileReader();
@@ -91,12 +90,17 @@ query("#uploader").addEventListener('change', function() {
 
 		var arrayBuffer = this.result;
 		var fileData = new Uint8Array(arrayBuffer);
+		var keysList = []
 
 		var pubKeyData = queryAll('.public-key textarea').map(el => getKey(el, 'public'))
-		pubKey = (await openpgp.key.readArmored(pubKeyData[0])).keys[0];
+		pubKeyData.forEach(async function(key){
+			var l = (await openpgp.key.readArmored(key)).keys[0]
+			keysList.push(l)
+		})
+
 		const options = {
 			message: openpgp.message.fromBinary(fileData),
-			publicKeys: pubKey,
+			publicKeys: keysList,
 			privateKey: "",
 			armor: true,
 		};
@@ -107,7 +111,7 @@ query("#uploader").addEventListener('change', function() {
 			new Blob([results.data]), {type: "application/pgp-encrypted"})
 			);
 			link.setAttribute('download', "encrypted.file.gpg");
-			link.innerHTML="encrypt.png"
+			link.innerHTML="encrypted.png"
 			query('#output').appendChild(link);
 		});
 
@@ -152,10 +156,18 @@ function getPrivateKey() {
 
 query('#encrypt').addEventListener('click', () => {
 
+	var keysList = []
+
+	var pubKeyData = queryAll('.public-key textarea').map(el => getKey(el, 'public'))
+	pubKeyData.forEach(async function(key){
+		var l = (await openpgp.key.readArmored(key)).keys[0]
+		keysList.push(l)
+	})
+
 	getPrivateKey().then(privateKey => {
 		const options = {
-			data: query('.message textarea').value,
-			publicKeys: queryAll('.public-key textarea').map(el => getKey(el, 'public')),
+			message: openpgp.message.fromText(query('.message textarea').value),
+			publicKeys: keysList,
 			privateKey: privateKey,
 			armor: true,
 		};
