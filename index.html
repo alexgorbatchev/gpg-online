@@ -87,14 +87,16 @@ const publicKeyTemplate = query('#public-keys').innerHTML;
 query("#uploader").addEventListener('change', function() {
 
   var reader = new FileReader();
-  reader.onload = function() {
+  reader.onload = async function() {
 
     var arrayBuffer = this.result;
     var fileData = new Uint8Array(arrayBuffer);
 
+		var pubKeyData = queryAll('.public-key textarea').map(el => getKey(el, 'public'))
+	  pubKey = (await openpgp.key.readArmored(pubKeyData[0])).keys[0];
 		const options = {
-      data: query('.message textarea').value,
-      publicKeys: queryAll('.public-key textarea').map(el => getKey(el, 'public')),
+      message: openpgp.message.fromBinary(fileData),
+      publicKeys: pubKey,
       privateKey: "",
       armor: true,
     };
@@ -125,7 +127,7 @@ function getKey(textarea, type) {
   if (!value) {
     throw new Error(`${type} key missing`);
   }
-  return openpgp.key.readArmored(value).keys[0];
+  return value;
 }
 
 function getPrivateKey() {
