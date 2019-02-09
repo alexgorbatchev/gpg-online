@@ -1,80 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GPG Online</title>
-  <script src="openpgp.min.js"></script>
-  <style type="text/css">
-    body, button, textarea, pre {
-      font-family: Consolas;
-    }
+	<title>GPG Online</title>
+	<script src="openpgp.min.js"></script>
+	<style type="text/css">
+		body, button, textarea, pre {
+			font-family: Consolas;
+		}
 
-    textarea {
-      width: 500px;
-      border: 1px solid silver;
-      border-radius: 3px;
-      padding: 0.2rem;
-    }
+		textarea {
+			width: 500px;
+			border: 1px solid silver;
+			border-radius: 3px;
+			padding: 0.2rem;
+		}
 
-    button {
-      font-size: 1rem;
-      border: 1px solid black;
-      background: white;
-      cursor: pointer;
-      padding: 3px 5px 1px 5px;
-    }
+		button {
+			font-size: 1rem;
+			border: 1px solid black;
+			background: white;
+			cursor: pointer;
+			padding: 3px 5px 1px 5px;
+		}
 
-    pre, textarea, input {
-      font-size: 0.8rem;
-    }
+		pre, textarea, input {
+			font-size: 0.8rem;
+		}
 
-    h2 {
-      margin: 0;
-      font-weight: normal;
-    }
+		h2 {
+			margin: 0;
+			font-weight: normal;
+		}
 
-    #private-key {
-      display: none;
-    }
+		#private-key {
+			display: none;
+		}
 
-    #private-key.visible {
-      display: block;
-    }
+		#private-key.visible {
+			display: block;
+		}
 
-    .hint {
-      font-size: 0.7rem;
-      margin: 0;
-      color: gray;
-    }
-  </style>
+		.hint {
+			font-size: 0.7rem;
+			margin: 0;
+			color: gray;
+		}
+	</style>
 </head>
 <body>
 
 <h1>GPG Online</h1>
 
 <div class="message">
-  <h2>Message to encrypt</h2>
-  <textarea rows="5"></textarea>
+	<h2>Message to encrypt</h2>
+	<textarea rows="5"></textarea>
 </div>
 
 <div id="public-keys">
-  <div class="public-key">
-    <h2>Public key</h2>
-    <p class="hint">Only the person who has a private key will be able to decrypt the message.</p>
-    <textarea rows="5"></textarea>
-  </div>
+	<div class="public-key">
+		<h2>Public key</h2>
+		<p class="hint">Only the person who has a private key will be able to decrypt the message.</p>
+		<textarea rows="5"></textarea>
+	</div>
 </div>
 
 <div id="private-key">
-  <h2>Private Key</h2>
-  <textarea rows="5"></textarea>
-  <h2>Passphrase</h2>
-  <textarea rows="2"></textarea>
+	<h2>Private Key</h2>
+	<textarea rows="5"></textarea>
+	<h2>Passphrase</h2>
+	<textarea rows="2"></textarea>
 </div>
 
 <div>
 	<input id="uploader" type="file" />
 </div>
-<pre id="output"></pre>
+<div id="output"></div>
 <button id="encrypt">Encrypt</button>
 <button id="add-public-key">Add Public Key</button>
 <button id="add-private-key">Add Private Key</button>
@@ -86,85 +86,91 @@ const publicKeyTemplate = query('#public-keys').innerHTML;
 
 query("#uploader").addEventListener('change', function() {
 
-  var reader = new FileReader();
-  reader.onload = async function() {
+	var reader = new FileReader();
+	reader.onload = async function() {
 
-    var arrayBuffer = this.result;
-    var fileData = new Uint8Array(arrayBuffer);
+		var arrayBuffer = this.result;
+		var fileData = new Uint8Array(arrayBuffer);
 
 		var pubKeyData = queryAll('.public-key textarea').map(el => getKey(el, 'public'))
-	  pubKey = (await openpgp.key.readArmored(pubKeyData[0])).keys[0];
+		pubKey = (await openpgp.key.readArmored(pubKeyData[0])).keys[0];
 		const options = {
-      message: openpgp.message.fromBinary(fileData),
-      publicKeys: pubKey,
-      privateKey: "",
-      armor: true,
-    };
+			message: openpgp.message.fromBinary(fileData),
+			publicKeys: pubKey,
+			privateKey: "",
+			armor: true,
+		};
 
-    return openpgp.encrypt(options).then(results => {
-      query('#output').innerHTML = results.data;
-    });
+		return openpgp.encrypt(options).then(results => {
+			link = document.createElement('a');
+			link.setAttribute('href', window.URL.createObjectURL(
+			new Blob([results.data]), {type: "application/pgp-encrypted"})
+			);
+			link.setAttribute('download', "encrypted.file.gpg");
+			link.innerHTML="encrypt.png"
+			query('#output').appendChild(link);
+		});
 
 
-  }
-  reader.readAsArrayBuffer(this.files[0]);
+	}
+	reader.readAsArrayBuffer(this.files[0]);
 
 }, false);
 
 
 query('#add-public-key').addEventListener('click', () => {
-  const element = document.createElement('div');
-  element.innerHTML = publicKeyTemplate;
-  query('#public-keys').appendChild(element);
+	const element = document.createElement('div');
+	element.innerHTML = publicKeyTemplate;
+	query('#public-keys').appendChild(element);
 });
 
 query('#add-private-key').addEventListener('click', () => {
-  query('#private-key').className = 'visible';
+	query('#private-key').className = 'visible';
 });
 
 function getKey(textarea, type) {
-  const { value } = textarea;
-  if (!value) {
-    throw new Error(`${type} key missing`);
-  }
-  return value;
+	const { value } = textarea;
+	if (!value) {
+		throw new Error(`${type} key missing`);
+	}
+	return value;
 }
 
 function getPrivateKey() {
-  if (query('#private-key').className !== 'visible') {
-    return Promise.resolve();
-  }
+	if (query('#private-key').className !== 'visible') {
+		return Promise.resolve();
+	}
 
-  const [key, passphrase] = queryAll('#private-key textarea');
-  return openpgp.decryptKey({
-    privateKey: getKey(key, 'private'),
-    passphrase: passphrase.value,
-  })
-  .then(({key}) => key)
-  ;
+	const [key, passphrase] = queryAll('#private-key textarea');
+	return openpgp.decryptKey({
+		privateKey: getKey(key, 'private'),
+		passphrase: passphrase.value,
+	})
+	.then(({key}) => key)
+	;
 }
 
 query('#encrypt').addEventListener('click', () => {
 
-  getPrivateKey().then(privateKey => {
-    const options = {
-      data: query('.message textarea').value,
-      publicKeys: queryAll('.public-key textarea').map(el => getKey(el, 'public')),
-      privateKey: privateKey,
-      armor: true,
-    };
+	getPrivateKey().then(privateKey => {
+		const options = {
+			data: query('.message textarea').value,
+			publicKeys: queryAll('.public-key textarea').map(el => getKey(el, 'public')),
+			privateKey: privateKey,
+			armor: true,
+		};
 
-    return openpgp.encrypt(options).then(results => {
-      query('#output').innerHTML = results.data;
-    });
-  })
-  .catch(err => alert(err.message))
-  ;
+		return openpgp.encrypt(options).then(results => {
+			query('#output').innerHTML = results.data;
+		});
+	})
+	.catch(err => alert(err.message))
+	;
 });
 </script>
 
 <p>
-  This page uses industry vetted open source <a href="https://github.com/openpgpjs/openpgpjs">OpenPGP.js</a> and does not submit anything to the server. Everything happens in your browser and is completely lost when you close this page.
+	This page uses industry vetted open source <a href="https://github.com/openpgpjs/openpgpjs">OpenPGP.js</a> and does not submit anything to the server. Everything happens in your browser and is completely lost when you close this page.
 </p>
 
 </body>
