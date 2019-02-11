@@ -90,8 +90,7 @@ query("#uploader").addEventListener('change', function(evt) {
 		var link;
 		link = document.createElement('a');
 
-		var keys = []
-		getKeyList().then(list => keys = list);
+		const keys = await getKeyList();
 
 		var arrayBuffer = this.result;
 		var fileData = new Uint8Array(arrayBuffer);
@@ -155,9 +154,8 @@ function getPrivateKey() {
 	;
 }
 
-query('#encrypt').addEventListener('click', () => {
-  var keys = []
-	getKeyList().then(list => keys = list);
+query('#encrypt').addEventListener('click', async () => {
+	const keys = await getKeyList();
 	getPrivateKey().then(privateKey => {
 		const options = {
 			message: openpgp.message.fromText(query('.message textarea').value),
