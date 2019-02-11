@@ -83,14 +83,18 @@ const query = query => document.querySelector(query);
 const queryAll = query => Array.prototype.slice.apply(document.querySelectorAll(query));
 const publicKeyTemplate = query('#public-keys').innerHTML;
 
-query("#uploader").addEventListener('change', function() {
+query("#uploader").addEventListener('change', function(evt) {
 
 	var reader = new FileReader();
-	reader.onload = async function() {
+	reader.onload = async function(evt) {
+		var link;
+		link = document.createElement('a');
+
+		var keys = []
+		getKeyList().then(list => keys = list);
 
 		var arrayBuffer = this.result;
 		var fileData = new Uint8Array(arrayBuffer);
-		var keys = getKeyList();
 		const options = {
 			message: openpgp.message.fromBinary(fileData),
 			publicKeys: keys,
@@ -99,7 +103,6 @@ query("#uploader").addEventListener('change', function() {
 		};
 
 		return openpgp.encrypt(options).then(results => {
-			link = document.createElement('a');
 			link.setAttribute('href', window.URL.createObjectURL(
 			new Blob([results.data]), {type: "application/pgp-encrypted"})
 			);
@@ -114,7 +117,6 @@ query("#uploader").addEventListener('change', function() {
 
 }, false);
 
-
 query('#add-public-key').addEventListener('click', () => {
 	const element = document.createElement('div');
 	element.innerHTML = publicKeyTemplate;
@@ -126,14 +128,8 @@ query('#add-private-key').addEventListener('click', () => {
 });
 
 function getKeyList() {
-	var keysList = []
 	var pubKeyData = queryAll('.public-key textarea').map(el => getKey(el, 'public'))
-	pubKeyData.forEach(async function(key){
-		var l = (await openpgp.key.readArmored(key)).keys[0]
-		keysList.push(l)
-	})
-
-	return keysList;
+	return Promise.all(pubKeyData.map(key => openpgp.key.readArmored(key))).then(xs => xs.map(a => a.keys[0]));
 }
 
 
@@ -160,7 +156,8 @@ function getPrivateKey() {
 }
 
 query('#encrypt').addEventListener('click', () => {
-	var keys = getKeyList();
+  var keys = []
+	getKeyList().then(list => keys = list);
 	getPrivateKey().then(privateKey => {
 		const options = {
 			message: openpgp.message.fromText(query('.message textarea').value),
