@@ -84,9 +84,9 @@ const queryAll = query => Array.prototype.slice.apply(document.querySelectorAll(
 const publicKeyTemplate = query('#public-keys').innerHTML;
 
 query("#uploader").addEventListener('change', function(evt) {
-
+	var files = evt.target.files; // FileList object
 	var reader = new FileReader();
-	reader.onload = async function(evt) {
+	reader.onload = (async function(evt) {
 		var link;
 		link = document.createElement('a');
 
@@ -106,12 +106,11 @@ query("#uploader").addEventListener('change', function(evt) {
 			new Blob([results.data]), {type: "application/pgp-encrypted"})
 			);
 			link.setAttribute('download', "encrypted.file.gpg");
-			link.innerHTML="encrypted.png"
+			link.innerHTML = files[0].name + ".pgp";
 			query('#output').appendChild(link);
 		});
+	})();
 
-
-	}
 	reader.readAsArrayBuffer(this.files[0]);
 
 }, false);
